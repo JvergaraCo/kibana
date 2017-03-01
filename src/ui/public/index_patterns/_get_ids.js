@@ -1,4 +1,6 @@
 import _ from 'lodash';
+const cookies = require('js-cookie');
+
 export default function GetIndexPatternIdsFn(esAdmin, kbnIndex, $http) {
 
   // many places may require the id list, so we will cache it seperately
@@ -29,27 +31,21 @@ export default function GetIndexPatternIdsFn(esAdmin, kbnIndex, $http) {
         url: 'http://cotalker.miperroql.com/api/users/me',
         //url: 'https://www.cotalker.com/api/users/me',
         headers: {
-          'Authorization': "Bearer "+ token
+          'Authorization': 'Bearer ' + token
         }
       }).then(function successCallback(response) {
         //const companyid = response['data']['companies'][0].companyId;
-        const companyid = response['data'].company;
-        const new_list = [];
-        if (companyid.localeCompare('*') != 0){
-          indices.map(function(indx) {
-            if(indx.indexOf(companyid) != -1){
-              new_list.push(indx);
-            }
-          })
-          cachedIds = new_list;
-          return new_list;
+        const companyid = response.data.company;
+        const newList = [];
+        if (companyid.localeCompare('*') !== 0) {
+          indices.map(function (indx) {
+            if (indx.indexOf(companyid) !== -1) newList.push(indx);
+          });
+          cachedIds = newList;
+          return newList;
         }
-        else{
-          return indices;
-        }
-
+        else return indices;
       }, function errorCallback(response) {
-        console.log("error: ",response);
         return [];
       });
 

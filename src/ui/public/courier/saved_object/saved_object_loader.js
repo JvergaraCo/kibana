@@ -2,8 +2,8 @@ import _ from 'lodash';
 import Scanner from 'ui/utils/scanner';
 import { StringUtils } from 'ui/utils/string_utils';
 
-var self;
-var cookies = require('js-cookie');
+let self;
+const cookies = require('js-cookie');
 
 export class SavedObjectLoader {
   constructor(SavedObjectClass, kbnIndex, esAdmin, kbnUrl, $http) {
@@ -14,7 +14,7 @@ export class SavedObjectLoader {
     this.kbnUrl = kbnUrl;
     this.esAdmin = esAdmin;
     this.$http = $http;
-    self= this;
+    self = this;
     this.scanner = new Scanner(esAdmin, {
       index: kbnIndex,
       type: this.lowercaseType
@@ -45,10 +45,9 @@ export class SavedObjectLoader {
     ids = !_.isArray(ids) ? [ids] : ids;
 
     const deletions = ids.map(id => {
-        const savedObject = new this.Class(id);
-    return savedObject.delete();
-  });
-
+      const savedObject = new this.Class(id);
+      return savedObject.delete();
+    });
     return Promise.all(deletions);
   }
 
@@ -59,13 +58,6 @@ export class SavedObjectLoader {
    * @returns {hit._source} The modified hit._source object, with an id and url field.
    */
   mapHits(hit) {
-    /*
-     const source = hit._source;
-     source.id = hit._id;
-     source.url = this.urlFor(hit._id);
-     return source;
-     */
-    //------------------------------------------------------------------------------------
     //opciones
     //'#/visualize/edit/{{id}}'
     //'#/discover/{{id}}'
@@ -73,22 +65,21 @@ export class SavedObjectLoader {
     //'#/dashboard/{{id}}'
     const source = hit._source;
     source.id = hit._id;
-    const url_old= this.urlFor(hit._id);
-    if(hit._type.localeCompare('search') == 0){
-      source.url = url_old.replace('dashboard','discover');
+    const urlOld = this.urlFor(hit._id);
+    if(hit._type.localeCompare('search') === 0) {
+      source.url = urlOld.replace('dashboard','discover');
     }
-    else if(hit._type.localeCompare('visualization') == 0){
-      source.url = url_old.replace('dashboard','visualize/edit');
+    else if(hit._type.localeCompare('visualization') === 0) {
+      source.url = urlOld.replace('dashboard','visualize/edit');
     }
     return source;
-    //------------------------------------------------------------------------------------
   }
 
   scanAll(queryString, pageSize = 1000) {
     return this.scanner.scanAndMap(queryString, {
-        pageSize,
-        docCount: Infinity
-      }, (hit) => this.mapHits(hit));
+      pageSize,
+      docCount: Infinity
+    }, (hit) => this.mapHits(hit));
   }
 
   /**
@@ -116,49 +107,44 @@ export class SavedObjectLoader {
     }
 
     return this.esAdmin.search({
-        index: this.kbnIndex,
-        type: this.lowercaseType,
-        body,
-        size
-      })
-        .then((resp) => {
-        const token = cookies.get('my_cookie_dot');
-    return this.$http({
-      method: 'GET',
-      url: 'http://cotalker.miperroql.com/api/users/me',
-      //url: 'https://www.cotalker.com/api/users/me',
-      headers: {
-        'Authorization': "Bearer "+ token
-      }
-    }).then(function successCallback(response) {
-      const companyid = response['data'].company;
-      const new_list = [];
-      if (companyid.localeCompare('*') != 0){
-        resp.hits.hits.forEach((obj_save) => {
-          var str = JSON.stringify(eval('('+obj_save._source.kibanaSavedObjectMeta.searchSourceJSON+')'));
-        var name_index = JSON.parse(str).index;
-        if(typeof name_index != 'undefined' && name_index.indexOf(companyid) != -1){
-          new_list.push(obj_save);
-        }
-        else{
-          console.log("no tiene indice");
-        }
-      })
-        resp.hits.hits = new_list;
-        resp.hits.total = new_list.length;
-        const hita = resp.hits.hits.map((hit) => self.mapHits(hit));
-        return {total: resp.hits.total, hits: hita };
-
-      }
-      else {
-        const hita = resp.hits.hits.map((hit) => self.mapHits(hit));
-        return {total: resp.hits.total, hits: hita};
-      }
-
-    }, function errorCallback(response) {
-      console.log("error: ",response);
-      return {};
+      index: this.kbnIndex,
+      type: this.lowercaseType,
+      body,
+      size
     })
-  });
+      .then((resp) => {
+        const token = cookies.get('my_cookie_dot');
+        return this.$http({
+          method: 'GET',
+          url: 'http://cotalker.miperroql.com/api/users/me',
+          //url: 'https://www.cotalker.com/api/users/me',
+          headers: {
+            'Authorization': 'Bearer ' + token
+          }
+        }).then(function successCallback(response) {
+          const companyid = response.data.company;
+          const newList = [];
+          if (companyid.localeCompare('*') !== 0) {
+            resp.hits.hits.forEach((objSave) => {
+              /* eslint-disable */
+              const str = JSON.stringify(eval('(' + objSave._source.kibanaSavedObjectMeta.searchSourceJSON + ')'));
+              /* eslint-enable */
+              const nameIndex = JSON.parse(str).index;
+              if (typeof nameIndex !== 'undefined' && nameIndex.indexOf(companyid) !== -1) newList.push(objSave);
+            });
+            resp.hits.hits = newList;
+            resp.hits.total = newList.length;
+            const hita = resp.hits.hits.map((hit) => self.mapHits(hit));
+            return { total: resp.hits.total, hits: hita };
+
+          }
+          else {
+            const hita = resp.hits.hits.map((hit) => self.mapHits(hit));
+            return { total: resp.hits.total, hits: hita };
+          }
+        }, function errorCallback(response) {
+          return {};
+        });
+      });
   }
 }
